@@ -1,0 +1,6 @@
+name: MainPlugin
+version: '${project.version}'
+main: ru.gikexe.mainplugin.MainPlugin
+api-version: '1.20'
+commands:
+  auth:
