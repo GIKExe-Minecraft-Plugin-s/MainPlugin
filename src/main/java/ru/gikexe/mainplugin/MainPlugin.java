@@ -20,6 +20,7 @@ public final class MainPlugin extends JavaPlugin {
 		pm = server.getPluginManager();
 
 		pm.registerEvents(new AuthListener(this), this);
+		pm.registerEvents(new MainListener(this), this);
 
 		@Nullable PluginCommand com = getCommand("auth");
 		if (com != null) {
