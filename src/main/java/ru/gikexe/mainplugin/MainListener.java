@@ -1,7 +1,9 @@
 package ru.gikexe.mainplugin;
 
+import io.papermc.paper.event.player.PlayerDeepSleepEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.entity.Player;
@@ -105,5 +107,12 @@ public class MainListener implements Listener {
 		player.sendMessage(Component.text(String.format("Вы умерли на: %s, %s, %s", loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()), RED));
 		if (logic == null) return;
 		logic.getScore(player).setScore(0);
+	}
+
+	@EventHandler
+	public void on(PlayerDeepSleepEvent event) {
+		if (event.isCancelled()) return;
+		Player player = event.getPlayer();
+		player.setHealth(Math.min(player.getHealth()+1.0, player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()));
 	}
 }
