@@ -96,11 +96,13 @@ public class MainListener implements Listener {
 			player.getInventory().addItem(cerf);
 		}
 	}
-	
+
 	// временный код
 	@EventHandler
 	public void on(PlayerDeathEvent event) {
 		Player player = event.getPlayer();
+		Location loc = player.getLocation();
+		player.sendMessage(Component.text(String.format("Вы умерли на: %s, %s, %s", loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()), RED));
 		if (logic == null) return;
 		logic.getScore(player).setScore(0);
 	}

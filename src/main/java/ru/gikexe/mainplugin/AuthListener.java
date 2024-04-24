@@ -1,16 +1,15 @@
 package ru.gikexe.mainplugin;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
+import io.papermc.paper.event.player.PlayerPickItemEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 
 import static net.kyori.adventure.text.format.NamedTextColor.*;
-import static org.bukkit.event.player.PlayerLoginEvent.Result.KICK_OTHER;
 
 public class AuthListener implements Listener {
 	MainPlugin plugin;
@@ -81,13 +79,14 @@ public class AuthListener implements Listener {
 	}
 
 	@EventHandler
-	public void on(PlayerLoginEvent event) {
-		String name = event.getPlayer().getName();
+	public void on(AsyncPlayerPreLoginEvent event) {
+		String name = event.getName();
 		if (!name.matches("[a-zA-Zа-яА-Я0-9_]+")) {
-			event.disallow(KICK_OTHER, Component.text("недопустимый ник", RED)); return;
-		}
-		if (Bukkit.getServer().getPlayer(name) != null) {
-			event.disallow(KICK_OTHER, Component.text("игрок с ником \""+name+"\" уже есть на сервере", RED));
+			event.kickMessage(Component.text("недопустимый ник", RED));
+			event.setLoginResult(AsyncPlayerPreLoginEvent.Result.KICK_OTHER);
+		} else if (Bukkit.getServer().getPlayer(name) != null) {
+			event.kickMessage(Component.text("игрок с ником \""+name+"\" уже есть на сервере", RED));
+			event.setLoginResult(AsyncPlayerPreLoginEvent.Result.KICK_OTHER);
 		}
 	}
 
@@ -128,17 +127,22 @@ public class AuthListener implements Listener {
 		Player player = event.getPlayer();
 		getData(player).replace("login", false);
 		setPerm(player, "gikexe.auth", false);
-		plugin.server.broadcast(Component.text(player.getName(), WHITE).append(msg.get(0)), "gikexe.auth");
+		plugin.server.broadcast(Component.text(player.getName(), WHITE).append(msg.get(2)), "gikexe.auth");
 		event.quitMessage(null);
 	}
 
 	//CANSEL NON LOGIN
-	@EventHandler
-	public void on(PlayerCommandPreprocessEvent event) {
+	private void _cansel(PlayerEvent event) {
 		Player player = event.getPlayer();
 		if ((boolean) getData(player).get("login")) return;
 		player.sendMessage(msg.get(8));
-		event.setCancelled(true);
+		((Cancellable) event).setCancelled(true);
 	}
 
+	@EventHandler
+	public void on(PlayerCommandPreprocessEvent event) {_cansel(event);}
+	@EventHandler
+	public void on(PlayerDropItemEvent event) {_cansel(event);}
+	@EventHandler
+	public void on(PlayerPickItemEvent event) {_cansel(event);}
 }
