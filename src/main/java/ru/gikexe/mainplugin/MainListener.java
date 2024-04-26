@@ -5,12 +5,15 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
+import org.bukkit.block.CreatureSpawner;
 import org.bukkit.block.data.Ageable;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
@@ -25,12 +28,14 @@ import java.util.List;
 
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.ITALIC;
+import static org.bukkit.Material.*;
+import static org.bukkit.enchantments.Enchantment.SILK_TOUCH;
 
 public class MainListener implements Listener {
 	MainPlugin plugin;
 	@Nullable Objective logic;
 	@Nullable Objective decor;
-	Integer cerf_x = 50;
+	Integer cert_x = 50;
 	List<Material> harvested_crops = List.of(
 					Material.WHEAT,
 					Material.CARROTS,
@@ -49,6 +54,16 @@ public class MainListener implements Listener {
 
 		decor = Bukkit.getScoreboardManager().getMainScoreboard().getObjective("farmer_event");
 		if (decor == null) plugin.getLogger().warning("на сервере нет задачи farmer_event!");
+	}
+
+	public void getCertificate(Player player) {
+		ItemStack certificate = new ItemStack(Material.PAPER);
+		ItemMeta im = certificate.getItemMeta();
+		im.displayName(Component.text("Сертификат", DARK_PURPLE).decoration(ITALIC, false));
+		im.lore(List.of(Component.text(cert_x+" очков", GREEN).decoration(ITALIC, false),
+						Component.text("принадлежит игроку "+player.getName(), GRAY).decoration(ITALIC, false)));
+		certificate.setItemMeta(im);
+		player.getInventory().addItem(certificate);
 	}
 
 	@EventHandler
@@ -87,15 +102,9 @@ public class MainListener implements Listener {
 		if (decor != null) {
 			decor.getScore(player).setScore(decor.getScore(player).getScore()+1);
 		}
-		if (score.getScore() >= cerf_x) {
-			score.setScore(score.getScore()-cerf_x);
-			ItemStack cerf = new ItemStack(Material.PAPER);
-			ItemMeta im = cerf.getItemMeta();
-			im.displayName(Component.text("Сертификат", DARK_PURPLE).decoration(ITALIC, false));
-			im.lore(List.of(Component.text(cerf_x+" очков", GREEN).decoration(ITALIC, false),
-							Component.text("принадлежит игроку "+player.getName(), GRAY).decoration(ITALIC, false)));
-			cerf.setItemMeta(im);
-			player.getInventory().addItem(cerf);
+		if (score.getScore() >= cert_x) {
+			score.setScore(score.getScore()- cert_x);
+			getCertificate(player);
 		}
 	}
 
@@ -114,5 +123,34 @@ public class MainListener implements Listener {
 		if (event.isCancelled()) return;
 		Player player = event.getPlayer();
 		player.setHealth(Math.min(player.getHealth()+1.0, player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()));
+	}
+
+	@EventHandler
+	public void on(BlockBreakEvent event) {
+		if (event.isCancelled()) return;
+		Block block = event.getBlock();
+		Player player = event.getPlayer();
+		World world = player.getWorld();
+		ItemStack item = player.getInventory().getItemInMainHand();
+
+		if (
+			block.getType() == SPAWNER &&
+			List.of(IRON_PICKAXE, DIAMOND_PICKAXE, NETHERITE_PICKAXE).contains(item.getType()) &&
+			item.containsEnchantment(SILK_TOUCH)
+		) {
+			Location loc = block.getLocation().clone().add(0.5, 0.5, 0.5);
+			world.dropItem(loc, new ItemStack(SPAWNER));
+
+			EntityType type = ((CreatureSpawner) block.getState()).getSpawnedType();
+			if (type != null) {
+				Material material = Material.getMaterial(type.name()+"_SPAWN_EGG");
+				if (material != null) world.dropItem(loc, new ItemStack(material));
+			}
+			getCertificate(player);
+			event.setExpToDrop(0);
+			player.getInventory().setItemInMainHand(null);
+			player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 100.0f, 1.0f);
+		}
+
 	}
 }

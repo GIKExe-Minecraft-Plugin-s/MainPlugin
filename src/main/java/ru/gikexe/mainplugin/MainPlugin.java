@@ -8,12 +8,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
-import java.util.Objects;
 
 public final class MainPlugin extends JavaPlugin {
 	public Server server;
 	public PluginManager pm;
 	public Config players;
+	public Recipes recipes;
 
 	public void onEnable() {
 		server = getServer();
@@ -33,6 +33,8 @@ public final class MainPlugin extends JavaPlugin {
 		for (Player player : server.getOnlinePlayers()) {
 			((Map<String, Object>) players.get(player.getUniqueId().toString())).replace("login", true);
 		}
+
+		recipes = new Recipes(this);
 	}
 
 	public void onDisable() {
