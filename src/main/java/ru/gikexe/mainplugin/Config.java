@@ -11,7 +11,7 @@ import java.util.HashMap;
 
 public class Config extends HashMap<String, Object> {
 	private static final Yaml yaml = new Yaml();
-	private File file;
+	private final File file;
 
 	public Config(JavaPlugin plugin, String filename) {
 		file = Paths.get(plugin.getDataFolder().getPath(),filename).toFile();
