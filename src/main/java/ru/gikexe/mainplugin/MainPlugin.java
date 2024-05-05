@@ -1,8 +1,12 @@
 package ru.gikexe.mainplugin;
 
+import org.bukkit.Material;
 import org.bukkit.Server;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import static org.bukkit.Material.AIR;
 
 public final class MainPlugin extends JavaPlugin {
 	public Server server;
@@ -20,5 +24,10 @@ public final class MainPlugin extends JavaPlugin {
 
 	public void onDisable() {
 
+	}
+
+	public boolean airOrNull(ItemStack item) {
+		if (item == null) return true;
+		return item.getType() == AIR;
 	}
 }
