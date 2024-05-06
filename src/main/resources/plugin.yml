@@ -3,3 +3,5 @@ version: '${project.version}'
 main: ru.gikexe.mainplugin.MainPlugin
 author: GIKExe
 api-version: '1.20'
+commands:
+  coin:

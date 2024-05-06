@@ -4,6 +4,7 @@ import io.papermc.paper.event.player.PlayerDeepSleepEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.block.data.Ageable;
@@ -13,7 +14,6 @@ import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.*;
@@ -23,42 +23,79 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Score;
+import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.ITALIC;
 import static org.bukkit.Material.*;
 import static org.bukkit.enchantments.Enchantment.SILK_TOUCH;
 import static org.bukkit.event.Event.Result.DENY;
+import static org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
 import static org.bukkit.event.inventory.InventoryAction.*;
 
 public class MainListener implements Listener {
 	MainPlugin plugin;
+	Logger logger;
+
+	Scoreboard scoreboard;
 	@Nullable Objective logic;
-	@Nullable Objective decor;
+	@Nullable Objective coin;
+
 	Integer cert_x = 50;
-	List<Material> harvested_crops = List.of(
-					Material.WHEAT,
-					Material.CARROTS,
-					Material.POTATOES,
-					Material.BEETROOTS,
-					Material.MELON,
-					Material.PUMPKIN
+
+	static List<Material> HARVESTED_CROPS = List.of(
+		WHEAT,
+		CARROTS,
+		POTATOES,
+		BEETROOTS,
+		MELON,
+		PUMPKIN
+	);
+
+	static List<Material> ALL_SIGN = List.of(
+		OAK_WALL_SIGN,
+		SPRUCE_WALL_SIGN,
+		BIRCH_WALL_SIGN,
+		JUNGLE_WALL_SIGN,
+		ACACIA_WALL_SIGN,
+		DARK_OAK_WALL_SIGN,
+		MANGROVE_WALL_SIGN,
+		CHERRY_WALL_SIGN,
+		BAMBOO_WALL_SIGN,
+		CRIMSON_WALL_SIGN,
+		WARPED_WALL_SIGN
 	);
 
 	public MainListener(MainPlugin plugin) {
 		this.plugin = plugin;
+		logger = plugin.getLogger();
 
-    // временный код
-		logic = Bukkit.getScoreboardManager().getMainScoreboard().getObjective("farmer_event_logic");
-		if (logic == null) plugin.getLogger().warning("на сервере нет задачи farmer_event_logic!");
+		scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+		logic = scoreboard.getObjective("farmer_event_logic");
+		if (logic == null) logger.warning("на сервере нет задачи farmer_event_logic!");
 
-		decor = Bukkit.getScoreboardManager().getMainScoreboard().getObjective("farmer_event");
-		if (decor == null) plugin.getLogger().warning("на сервере нет задачи farmer_event!");
+		coin = scoreboard.getObjective("coin");
+		if (coin == null) logger.warning("на сервере нет задачи coin!");
+	}
+
+	public double getScore(@Nullable Objective objective, Player player) {
+		if (objective == null) return 0;
+		return ((double) objective.getScore(player).getScore()) / 1000;
+	}
+
+	public void setScore(@Nullable Objective objective, Player player, double value) {
+		if (objective == null) return;
+		objective.getScore(player).setScore((int) (value * 1000));
+	}
+
+	public void addScore(@Nullable Objective objective, Player player, double value) {
+		if (objective == null) return;
+		setScore(objective, player, getScore(objective, player) + value);
 	}
 
 	public void getCertificate(Player player) {
@@ -71,20 +108,19 @@ public class MainListener implements Listener {
 		player.getInventory().addItem(certificate);
 	}
 
-	@EventHandler
-	public void on(PlayerInteractEvent event) {
-		if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+	private void interactOfSing(PlayerInteractEvent event) {
+
+	}
+
+	private void interactOfCrops(PlayerInteractEvent event) {
+		Block block = event.getClickedBlock();
 		Player player = event.getPlayer();
 		World world = player.getWorld();
 		ItemStack item = event.getItem();
-		Block block = event.getClickedBlock();
-		if (block == null) return;
-		if (!harvested_crops.contains(block.getType())) return;
 
 		Collection<ItemStack> drop = block.getDrops(item, player);
 		Location loc = block.getLocation().clone().add(0.5, 0.0, 0.5);
-		if (block.getBlockData() instanceof Ageable) {
-			Ageable data = (Ageable) block.getBlockData();
+		if (block.getBlockData() instanceof Ageable data) {
 			if (data.getAge() < data.getMaximumAge()) return;
 			data.setAge(0);
 			block.setBlockData(data);
@@ -98,35 +134,39 @@ public class MainListener implements Listener {
 		event.setUseInteractedBlock(DENY);
 		event.setUseItemInHand(DENY);
 
-		// временный код
-		if (logic == null) return;
-		Score score = logic.getScore(player);
-		if (score.getScore() < 0) return;
-		score.setScore(score.getScore()+1);
-		if (decor != null) {
-			decor.getScore(player).setScore(decor.getScore(player).getScore()+1);
-		}
-		if (score.getScore() >= cert_x) {
-			score.setScore(score.getScore()- cert_x);
+		double value = getScore(logic, player);
+		if (value < 0) return;
+		setScore(logic, player, value+1);
+		if (value >= cert_x) {
+			setScore(logic, player, value - cert_x);
 			getCertificate(player);
 		}
 	}
 
-	// временный код
+	@EventHandler
+	public void on(PlayerInteractEvent event) {
+		if (event.getAction() != RIGHT_CLICK_BLOCK) return;
+		if (plugin.airOrNull(event.getClickedBlock())) return;
+
+		Block block = event.getClickedBlock();
+		if (ALL_SIGN.contains(block.getType())) interactOfSing(event);
+		else if (HARVESTED_CROPS.contains(block.getType())) interactOfCrops(event);
+	}
+
 	@EventHandler
 	public void on(PlayerDeathEvent event) {
 		Player player = event.getPlayer();
 		Location loc = player.getLocation();
 		player.sendMessage(Component.text(String.format("Вы умерли на: %s, %s, %s", loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()), RED));
-		if (logic == null) return;
-		logic.getScore(player).setScore(0);
+		setScore(logic, player, 0);
 	}
 
 	@EventHandler
 	public void on(PlayerDeepSleepEvent event) {
 		if (event.isCancelled()) return;
 		Player player = event.getPlayer();
-		player.setHealth(Math.min(player.getHealth()+1.0, player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()));
+		AttributeInstance maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+		player.setHealth(Math.min(player.getHealth()+1.0, maxHealth == null ? 20 : maxHealth.getValue()));
 	}
 
 	@EventHandler
@@ -246,9 +286,6 @@ public class MainListener implements Listener {
 						human.setItemOnCursor(cursorItem);
 						event.setResult(DENY);
 					}
-//					default -> {
-//						plugin.getLogger().warning(event.getAction().name());
-//					}
 				}
 			} case RESULT -> {
 				if (event.getAction() != PICKUP_ALL) return;
